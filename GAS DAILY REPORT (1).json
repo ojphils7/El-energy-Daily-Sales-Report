@@ -1,0 +1,716 @@
+{
+  "name": "GAS DAILY REPORT",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 21,
+              "triggerAtMinute": 9
+            }
+          ]
+        }
+      },
+      "id": "82ebb4f5-8e6c-415a-9b7f-7ba7761507f3",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        1040,
+        0
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "",
+          "cachedResultUrl": ""
+        }
+      },
+      "id": "a8e5a0a3-8c23-4183-bacf-16db21017882",
+      "name": "Get row(s) in sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1280,
+        -16
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "A7Nh1Nwzr7yuMXDb",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Today's date: {{ $now.toFormat('dd/MM/yyyy') }}\n\nTODAY'S SALES (from Sheet1):\n{{ JSON.stringify($('Get row(s) in sheet').all().map(i => i.json).filter(r => r.Date === $now.toFormat('dd/MM/yyyy'))) }}\n\nCURRENT STOCK (from Sheet3):\n{{ JSON.stringify($('Get row(s) in sheet1').all().map(i => i.json)) }}\n\nTASK:\n1. Group TODAY'S SALES by Product. For each product, add up:\n   - Quantity Sold\n   - Revenue = Quantity Sold x Unit Price (₦)\n\n2. For EACH product sold today, use CURRENT STOCK to work out:\n   - Closing Stock = Opening Stock + Stock Received - Quantity Sold\n   - Stock Value = Closing Stock x Unit Price\n   - Stock Status:\n       \"Out of Stock\" if Closing Stock is 0 or less\n       \"Low\" if Closing Stock is below 20% of (Opening Stock + Stock Received)\n       otherwise \"Sufficient\"\n   Then call the tool \"Update row in sheet in Google Sheets\" (Sheet3 stock tool) ONCE for that product.\n\n3. Group TODAY'S SALES by Category (Gas, Cylinder, Accessories, Equipment) and add up the revenue for each category.\n\n4. Call the tool \"Update row in sheet in Google Sheets1\" (Sheet2 daily summary tool) ONCE with:\n   - Date = today's date\n   - Total for each category\n   - Total Quantity Sold (all products)\n   - TOTAL SALES = sum of all categories\n\nIf TODAY'S SALES is empty [], do not call any tool. Just return the JSON below with zeros.\n\nReturn ONLY this JSON, no markdown:\n{ \"date\": \"\", \"products_updated\": [], \"category_totals\": { \"Gas\": 0, \"Cylinder\": 0, \"Accessories\": 0, \"Equipment\": 0 }, \"total_quantity_sold\": 0, \"total_sales\": 0, \"alerts\": [] }",
+        "options": {
+          "systemMessage": "You are a careful sales and stock processor for EL-ENERGY GAS, a gas retail business in Nigeria.\n\nYou have two tools:\n- \"Update row in sheet in Google Sheets\" updates ONE product's stock row in Sheet3. Call it once per product sold today.\n- \"Update row in sheet in Google Sheets1\" writes ONE daily summary row in Sheet2. Call it only once per run, after all products are done.\n\nRules:\n- Only use the data given in the prompt. Never invent products, prices or sales.\n- Use product names exactly as written in the data (e.g. \"Gas Cylinder 12.5kg\").\n- There can be many products in several categories. Do not skip any product that was sold.\n- Write numbers only, with no ₦ sign and no commas (e.g. 45000, not ₦45,000).\n- Round money to 2 decimal places.\n- Never change Opening Stock, Stock Received, Category or Unit in Sheet3.\n- If a product sold more than it had in stock, add an alert and still update it.\n- Double-check every calculation before calling a tool.\n- Your final answer must be valid JSON only, with no extra text.\n"
+        }
+      },
+      "id": "393698ea-bd2a-4a15-95f5-ad78d95a6041",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1952,
+        -16
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "notes": "AI AGENT CALCULATIONS"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1728,
+        -16
+      ],
+      "id": "6b9b1bd9-3e8e-4bae-a7b8-ca4bba5ba3bb",
+      "name": "Aggregate",
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8",
+          "mode": "list",
+          "cachedResultName": "EL-ENERGY GAS DAILY SALES RECORD",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1711504784,
+          "mode": "list",
+          "cachedResultName": "Sheet3",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8/edit#gid=1711504784"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1504,
+        -16
+      ],
+      "id": "127d7dd7-6b63-43aa-b43f-3571d298f299",
+      "name": "Get row(s) in sheet1",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aiePvBgUs8OKJkge",
+          "name": "Google Sheets account"
+        }
+      },
+      "notes": "Get stocks from sheet 3\n"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1824,
+        192
+      ],
+      "id": "3ca5409b-3d71-4958-bac1-6867857caea2",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Updates the stock record of ONE product in Sheet3.\nCall this tool once for EVERY product that appears in today's sales.\nIf 5 products were sold, call it 5 times, once per product.\nMatch the product name exactly as written in Sheet3",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8",
+          "mode": "list",
+          "cachedResultName": "EL-ENERGY GAS DAILY SALES RECORD",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1711504784,
+          "mode": "list",
+          "cachedResultName": "Sheet3",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8/edit#gid=1711504784"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Product": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Product__using_to_match_', `Exact product name as in Sheet3. Valid names: Cooking Gas, Gas Cylinder 6kg, Gas Cylinder 12.5kg, Regulator, Gas Hose, Burner, Compressor`, 'string') }}",
+            "Category": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Category', `Update the category by referring to the sheet1`, 'string') }}",
+            "Unit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Unit', `Update the unit sold by referring to sheet1 `, 'string') }}",
+            "Opening Stock": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Opening_Stock', `Opening Stock + Stock Received - Quantity Sold for this product. Number only.`, 'string') }}",
+            "Stock Received": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Stock_Received', ``, 'string') }}",
+            "Quantity Sold": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Quantity_Sold', `Sum of Quantity Sold for this product across ALL of today's sales rows. Number only.`, 'string') }}",
+            "Closing Stock": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Closing_Stock', `Opening Stock + Stock Received - Quantity Sold for this product. Number only.`, 'string') }}",
+            "Unit Price (₦)": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Unit_Price____', `Unit Price of this product from today's sales. If there are different prices, use the average. Number only, no ₦ sign or commas`, 'string') }}",
+            "Stock Value (₦)": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Stock_Value____', `Closing Stock x Unit Price for this product. Number only`, 'string') }}",
+            "Stock Status": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Stock_Status', `\"Out of Stock\" if Closing Stock is 0 or less, \"Low\" if Closing Stock is below 20% of (Opening Stock + Stock Received), otherwise \"Sufficient\"`, 'string') }}"
+          },
+          "matchingColumns": [
+            "Product"
+          ],
+          "schema": [
+            {
+              "id": "Product",
+              "displayName": "Product",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Unit",
+              "displayName": "Unit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Opening Stock",
+              "displayName": "Opening Stock",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Stock Received",
+              "displayName": "Stock Received",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Quantity Sold",
+              "displayName": "Quantity Sold",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Closing Stock",
+              "displayName": "Closing Stock",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Unit Price (₦)",
+              "displayName": "Unit Price (₦)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Stock Value (₦)",
+              "displayName": "Stock Value (₦)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Stock Status",
+              "displayName": "Stock Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "32824bad-9e5d-4882-be05-81fa5965f4dd",
+      "name": "Append or update row in sheet in Google Sheets",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        2064,
+        240
+      ],
+      "notesInFlow": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aiePvBgUs8OKJkge",
+          "name": "Google Sheets account"
+        }
+      },
+      "notes": "Update Stock Sheet3\n"
+    },
+    {
+      "parameters": {
+        "sendTo": "ojphils7@gmail.com, Lordgas1960@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        3104,
+        128
+      ],
+      "id": "ae928557-5a33-47a7-a134-c0442907b17e",
+      "name": "Send a message",
+      "webhookId": "25c8b47c-8e82-49dd-90fa-acffc490471a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PmbTW1ILeAuCt0mn",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8",
+          "mode": "list",
+          "cachedResultName": "EL-ENERGY GAS DAILY SALES RECORD",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1567109382,
+          "mode": "list",
+          "cachedResultName": "Sheet2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8/edit#gid=1567109382"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Date__using_to_match_', `Update each date`, 'string') }}",
+            "Total Gas Sales (₦)": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Total_Gas_Sales____', `Get the total of Gas sales for the day and update it`, 'string') }}",
+            "Total Cylinder Sales (₦)": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Total_Cylinder_Sales____', `Update the Total of Cylinder sales`, 'string') }}",
+            "Total Accessories Sales (₦)": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Total_Accessories_Sales____', `Update the Total Accessories Sales`, 'string') }}",
+            "Total Quantity Sold": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Total_Quantity_Sold', `Update the Total Quantity Sold`, 'string') }}",
+            "TOTAL SALES (₦)": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('TOTAL_SALES____', `Calculate all sales in the row and update it in the Total sale`, 'string') }}",
+            "Total Equipment Sales (₦)": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Total_Equipment_Sales____', `Update the Total Equipment Sales `, 'string') }}"
+          },
+          "matchingColumns": [
+            "Date"
+          ],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Total Gas Sales (₦)",
+              "displayName": "Total Gas Sales (₦)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Total Cylinder Sales (₦)",
+              "displayName": "Total Cylinder Sales (₦)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Total Accessories Sales (₦)",
+              "displayName": "Total Accessories Sales (₦)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Total Equipment Sales (₦)",
+              "displayName": "Total Equipment Sales (₦)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Total Quantity Sold",
+              "displayName": "Total Quantity Sold",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "TOTAL SALES (₦)",
+              "displayName": "TOTAL SALES (₦)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        2240,
+        224
+      ],
+      "id": "75daa79d-f18a-4cb9-96e7-c89986a6470d",
+      "name": "Append or update row in sheet in Google Sheets1",
+      "notesInFlow": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aiePvBgUs8OKJkge",
+          "name": "Google Sheets account"
+        }
+      },
+      "notes": "Update Daily Summary Sheet2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------- helpers ----------\nconst naira = n => '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\nconst num = n => Number(n || 0).toLocaleString('en-NG');\nconst today = $now.toFormat('dd/MM/yyyy');\n\n// ---------- Sheet2: today's summary ----------\nconst summaryRows = $('Read sheet2').all().map(i => i.json);\nconst s = summaryRows.find(r => String(r['Date']) === today) || summaryRows[summaryRows.length - 1] || {};\n\n// ---------- Sheet3: stock ----------\nconst stock = $('Read sheet3').all().map(i => i.json).filter(r => r['Product']);\n\nconst totalOpening  = stock.reduce((a, r) => a + Number(r['Opening Stock']  || 0), 0);\nconst totalReceived = stock.reduce((a, r) => a + Number(r['Stock Received'] || 0), 0);\nconst totalSold     = stock.reduce((a, r) => a + Number(r['Quantity Sold']  || 0), 0);\nconst totalClosing  = stock.reduce((a, r) => a + Number(r['Closing Stock']  || 0), 0);\nconst totalValue    = stock.reduce((a, r) => a + Number(r['Stock Value (₦)'] || 0), 0);\n\nconst color = st => st === 'Out of Stock' ? '#c62828' : st === 'Low' ? '#ef6c00' : '#2e7d32';\nconst alerts = stock.filter(r => ['Low', 'Out of Stock'].includes(r['Stock Status']));\n\nconst th = 'style=\"background:#0d47a1;color:#fff;padding:8px;text-align:left\"';\nconst td = 'style=\"padding:8px;border-bottom:1px solid #ddd\"';\nconst tdR = 'style=\"padding:8px;border-bottom:1px solid #ddd;text-align:right\"';\n\n// ---------- stock table rows ----------\nconst stockRows = stock.map(r => `\n  <tr>\n    <td ${td}>${r['Product']}</td>\n    <td ${td}>${r['Category'] || ''}</td>\n    <td ${td}>${r['Unit'] || ''}</td>\n    <td ${tdR}>${num(r['Opening Stock'])}</td>\n    <td ${tdR}>${num(r['Stock Received'])}</td>\n    <td ${tdR}>${num(r['Quantity Sold'])}</td>\n    <td ${tdR}><b>${num(r['Closing Stock'])}</b></td>\n    <td ${tdR}>${naira(r['Stock Value (₦)'])}</td>\n    <td ${td}><span style=\"color:${color(r['Stock Status'])};font-weight:bold\">${r['Stock Status'] || '-'}</span></td>\n  </tr>`).join('');\n\n// ---------- alerts ----------\nconst alertHtml = alerts.length\n  ? `<ul>${alerts.map(r => `<li><b>${r['Product']}</b>: ${r['Stock Status']} (closing stock: ${num(r['Closing Stock'])} ${r['Unit'] || ''})</li>`).join('')}</ul>`\n  : `<p style=\"color:#2e7d32\">No stock alerts today. All products are sufficient.</p>`;\n\n// ---------- full email ----------\nconst html = `\n<div style=\"font-family:Arial,sans-serif;font-size:14px;color:#222;max-width:800px\">\n  <p>Hello Boss,</p>\n  <p>I hope you had a great day of sales. Below is the daily sales and stock report for <b>${s['Date'] || today}</b>.</p>\n\n  <h3 style=\"color:#0d47a1;border-bottom:2px solid #0d47a1;padding-bottom:4px\">1. Sales Summary</h3>\n  <table style=\"border-collapse:collapse;width:100%\">\n    <tr><th ${th}>Category</th><th ${th} style=\"background:#0d47a1;color:#fff;padding:8px;text-align:right\">Amount</th></tr>\n    <tr><td ${td}>Gas</td><td ${tdR}>${naira(s['Total Gas Sales (₦)'])}</td></tr>\n    <tr><td ${td}>Cylinder</td><td ${tdR}>${naira(s['Total Cylinder Sales (₦)'])}</td></tr>\n    <tr><td ${td}>Accessories</td><td ${tdR}>${naira(s['Total Accessories Sales (₦)'])}</td></tr>\n    <tr><td ${td}>Equipment</td><td ${tdR}>${naira(s['Total Equipment Sales (₦)'])}</td></tr>\n    <tr><td ${td}>Total Quantity Sold</td><td ${tdR}>${num(s['Total Quantity Sold'])}</td></tr>\n    <tr style=\"background:#e3f2fd\"><td ${td}><b>TOTAL SALES</b></td><td ${tdR}><b>${naira(s['TOTAL SALES (₦)'])}</b></td></tr>\n  </table>\n\n  <h3 style=\"color:#0d47a1;border-bottom:2px solid #0d47a1;padding-bottom:4px\">2. Stock Report (Opening and Closing)</h3>\n  <table style=\"border-collapse:collapse;width:100%;font-size:13px\">\n    <tr>\n      <th ${th}>Product</th><th ${th}>Category</th><th ${th}>Unit</th>\n      <th ${th}>Opening</th><th ${th}>Received</th><th ${th}>Sold</th>\n      <th ${th}>Closing</th><th ${th}>Stock Value</th><th ${th}>Status</th>\n    </tr>\n    ${stockRows}\n    <tr style=\"background:#e3f2fd;font-weight:bold\">\n      <td ${td} colspan=\"3\">TOTAL</td>\n      <td ${tdR}>${num(totalOpening)}</td>\n      <td ${tdR}>${num(totalReceived)}</td>\n      <td ${tdR}>${num(totalSold)}</td>\n      <td ${tdR}>${num(totalClosing)}</td>\n      <td ${tdR}>${naira(totalValue)}</td>\n      <td ${td}></td>\n    </tr>\n  </table>\n\n  <h3 style=\"color:#0d47a1;border-bottom:2px solid #0d47a1;padding-bottom:4px\">3. Stock Alerts</h3>\n  ${alertHtml}\n\n  <p style=\"margin-top:24px\">Regards,<br><b>EL-ENERGY GAS</b><br>Daily Report System</p>\n  <p style=\"font-size:11px;color:#888\">Report generated on ${$now.toFormat('dd/MM/yyyy')} at ${$now.toFormat('hh:mm a')}</p>\n</div>`;\n\nreturn [{\n  json: {\n    subject: `EL-ENERGY GAS Daily Sales & Stock Report - ${s['Date'] || today}`,\n    html\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2928,
+        -112
+      ],
+      "id": "691fc17b-284f-403f-8366-4d5c6c080664",
+      "name": "Code in JavaScript",
+      "executeOnce": true,
+      "notesInFlow": true,
+      "notes": "Build Email"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8",
+          "mode": "list",
+          "cachedResultName": "EL-ENERGY GAS DAILY SALES RECORD",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1711504784,
+          "mode": "list",
+          "cachedResultName": "Sheet3",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8/edit#gid=1711504784"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2704,
+        -112
+      ],
+      "id": "f10186c3-d1dd-48e8-a5b4-2d5e96099051",
+      "name": "Read sheet3",
+      "executeOnce": true,
+      "notesInFlow": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aiePvBgUs8OKJkge",
+          "name": "Google Sheets account"
+        }
+      },
+      "notes": "Read sheet 3"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8",
+          "mode": "list",
+          "cachedResultName": "EL-ENERGY GAS DAILY SALES RECORD",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1567109382,
+          "mode": "list",
+          "cachedResultName": "Sheet2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SW0jaFzPXNaaSuMuRaBwuyvhpCQ4vH0qKT14-5D0vO8/edit#gid=1567109382"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2448,
+        -112
+      ],
+      "id": "fd4de3e9-d0f7-41f1-b62f-3ddc85d75ff8",
+      "name": "Read sheet2",
+      "executeOnce": true,
+      "notesInFlow": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aiePvBgUs8OKJkge",
+          "name": "Google Sheets account"
+        }
+      },
+      "notes": "Read sheet2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Read sheet2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet in Google Sheets1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read sheet3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read sheet2": {
+      "main": [
+        [
+          {
+            "node": "Read sheet3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0b88036f-589d-4e10-9680-3b29c12cc9cd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7c38782bbe924f12eaa73b7be65cc18d6a34d71904762ccfbf64002d889cdf08"
+  },
+  "nodeGroups": [],
+  "id": "SUW5MzZGcCsvSKm8",
+  "tags": []
+}
